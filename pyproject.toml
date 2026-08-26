@@ -29,7 +29,7 @@ dependencies = [
     "typing-extensions==4.15.0",
     "uuid7==0.1.0",
     "google-genai==1.65.0",
-    "openai==2.16.0",
+    "openai>=2.20.0,<3.0.0",
     "anthropic==0.76.0",
     "groq==1.0.0",
     "ollama==0.6.1",
@@ -84,12 +84,16 @@ eval = [
     "psutil==7.2.2",
     "datamodel-code-generator==0.53.0",
 ]
+overmind = ["overmind"]
 cli-oci = ["browser-use[cli,oci]"]
 all = ["browser-use[cli,examples,aws,oci]"]
 
 # will prefer to use local source code checked out in ../../browser-use (if present) instead of pypi browser-use package
 # [tool.uv.sources]
 # bubus = { path = "../bubus", editable = true }
+
+[tool.uv.sources]
+overmind = { path = "/Users/dom/git/overmind/overmind", editable = true }
 
 
 [project.urls]
@@ -214,6 +218,12 @@ log_level = "DEBUG"
 allow-direct-references = true
 
 [tool.uv]
+conflicts = [
+	[{ extra = "eval" }, { extra = "overmind" }],
+	[{ group = "dev" }, { group = "overmind" }],
+	[{ group = "dev" }, { extra = "overmind" }],
+	[{ group = "overmind" }, { extra = "eval" }],
+]
 # required-environments = [
 #     "sys_platform == 'darwin' and platform_machine == 'arm64'",
 #     "sys_platform == 'darwin' and platform_machine == 'x86_64'",
@@ -239,8 +249,10 @@ dev-dependencies = [
     "pyright==1.1.408",
     "ty==0.0.14",
     "pytest-xdist==3.8.0",
-    "lmnr[all]==0.7.42",
     # "pytest-playwright-asyncio>=0.7.0",  # not actually needed I think
     "pytest-timeout==2.4.0",
     "pydantic_settings==2.12.0",
 ]
+
+[dependency-groups]
+overmind = ["overmind"]

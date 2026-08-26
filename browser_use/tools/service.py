@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+from contextlib import nullcontext
 from typing import Generic, TypeVar
 
 import anyio
@@ -2163,7 +2164,7 @@ Validated Code (after quote fixing):
 		logger.debug(f'Coordinate clicking {"enabled" if enabled else "disabled"}')
 
 	# Act --------------------------------------------------------------------
-	@observe_debug(ignore_input=True, ignore_output=True, name='act')
+	@observe_debug(ignore_input=True, ignore_output=True, name='act', overmind_kind='tool')
 	@time_execution_sync('--act')
 	async def act(
 		self,
@@ -2200,12 +2201,20 @@ Validated Code (after quote fixing):
 						span_type='TOOL',
 					)
 				else:
-					# No-op context manager when lmnr is not available
-					from contextlib import nullcontext
-
 					span_context = nullcontext()
 
-				with span_context:
+				try:
+					from browser_use.overmind.service import OvermindTelemetry
+				except ImportError:
+					OvermindTelemetry = None  # type: ignore[misc, assignment]
+
+				overmind_span = (
+					OvermindTelemetry.tool_span(action_name)
+					if OvermindTelemetry is not None and OvermindTelemetry.enabled()
+					else nullcontext()
+				)
+
+				with span_context, overmind_span:
 					try:
 						result = await asyncio.wait_for(
 							self.registry.execute_action(

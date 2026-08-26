@@ -83,6 +83,18 @@ from browser_use.utils import (
 	time_execution_sync,
 )
 
+try:
+	from browser_use.overmind import deliver_agent_result, flush_traces, init_if_configured
+except ImportError:
+	def init_if_configured(**kwargs):  # type: ignore[misc]
+		return False
+
+	def flush_traces(**kwargs):  # type: ignore[misc]
+		return None
+
+	def deliver_agent_result(result):  # type: ignore[misc]
+		return None
+
 logger = logging.getLogger(__name__)
 
 
@@ -1024,7 +1036,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		if self.state.paused:
 			raise InterruptedError
 
-	@observe(name='agent.step', ignore_output=True, ignore_input=True)
+	@observe(name='agent.step', ignore_output=True, ignore_input=True, overmind_kind='workflow')
 	@time_execution_async('--step')
 	async def step(self, step_info: AgentStepInfo | None = None) -> None:
 		"""Execute one step of the task"""
@@ -1166,7 +1178,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			step_info=step_info,
 		)
 
-	@observe_debug(ignore_input=True, name='get_next_action')
+	@observe_debug(ignore_input=True, name='get_next_action', overmind_kind='function')
 	async def _get_next_action(self, browser_state_summary: BrowserStateSummary) -> None:
 		"""Execute LLM interaction with retry logic and handle callbacks"""
 		input_messages = self._message_manager.get_messages()
@@ -1202,6 +1214,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		# check again if Ctrl+C was pressed before we commit the output to history
 		await self._check_stop_or_pause()
 
+	@observe_debug(ignore_input=True, ignore_output=True, name='_execute_actions', overmind_kind='function')
 	async def _execute_actions(self) -> None:
 		"""Execute the actions from model output"""
 		if self.state.last_model_output is None:
@@ -1935,7 +1948,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 	# endregion - URL replacement
 
 	@time_execution_async('--get_next_action')
-	@observe_debug(ignore_input=True, ignore_output=True, name='get_model_output')
+	@observe_debug(ignore_input=True, ignore_output=True, name='get_model_output', overmind_kind='function')
 	async def get_model_output(self, input_messages: list[BaseMessage]) -> AgentOutput:
 		"""Get next action from LLM based on current state"""
 
@@ -2501,7 +2514,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		return False
 
-	@observe(name='agent.run', ignore_input=True, ignore_output=True)
+	@observe(name='agent.run', ignore_input=True, ignore_output=True, overmind_kind='entry_point')
 	@time_execution_async('--run')
 	async def run(
 		self,
@@ -2538,6 +2551,8 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		signal_handler.register()
 
 		try:
+			init_if_configured(conversation_id=self.session_id, task=self.task)
+
 			await self._log_agent_run()
 
 			self.logger.debug(
@@ -2660,6 +2675,8 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			if self.history._output_model_schema is None and self.output_model_schema is not None:
 				self.history._output_model_schema = self.output_model_schema
 
+			deliver_agent_result(self.history.final_result() or self.history)
+
 			return self.history
 
 		except KeyboardInterrupt:
@@ -2727,8 +2744,9 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			await self.eventbus.stop(clear=True, timeout=_get_timeout('TIMEOUT_AgentEventBusStop', 3.0))
 
 			await self.close()
+			flush_traces()
 
-	@observe_debug(ignore_input=True, ignore_output=True)
+	@observe_debug(ignore_input=True, ignore_output=True, name='multi_act', overmind_kind='function')
 	@time_execution_async('--multi_act')
 	async def multi_act(self, actions: list[ActionModel]) -> list[ActionResult]:
 		"""Execute multiple actions with page-change guards.
