@@ -1,9 +1,9 @@
 """Overmind trace export for browser-use.
 
-Initialises the local Overmind SDK (trajectory branch) when ``OVERMIND_API_KEY``
-is set, fans out onto an existing OpenTelemetry ``TracerProvider`` when one is
-already installed (e.g. by Laminar / Traceloop), and exposes helpers for the
-agent lifecycle (conversation id, deliver, flush).
+Initialises the Overmind SDK from PyPI when ``OVERMIND_API_KEY`` is set, fans out
+onto an existing OpenTelemetry ``TracerProvider`` when one is already installed
+(e.g. by Laminar / Traceloop), and exposes helpers for the agent lifecycle
+(conversation id, final result, flush).
 """
 
 from __future__ import annotations
@@ -132,16 +132,17 @@ def flush_traces(timeout_millis: int = 5000) -> None:
 
 
 def deliver_agent_result(result: Any) -> None:
-	"""Record the terminal agent deliverable on a child span."""
+	"""Record the terminal agent result on a child span (PyPI tracing model)."""
 	if not _initialised:
 		return
 	overmind = _load_overmind()
 	if overmind is None:
 		return
 	try:
-		overmind.deliver(result)
+		with overmind.start_span('agent.final_result', span_type=overmind.SpanType.FUNCTION):
+			overmind.set_tag('outputs', result)
 	except Exception:
-		logger.debug('Overmind deliver() failed', exc_info=True)
+		logger.debug('Overmind final result capture failed', exc_info=True)
 
 
 OvermindSpanKind = Literal['entry_point', 'workflow', 'tool', 'function', 'retrieval']

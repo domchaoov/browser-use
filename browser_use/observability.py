@@ -5,9 +5,8 @@ Observability module for browser-use
 This module provides observability decorators that optionally integrate with lmnr (Laminar) for tracing.
 If lmnr is not installed, it provides no-op wrappers that accept the same parameters.
 
-When ``OVERMIND_API_KEY`` is set, the same decorators also emit spans to Overmind via the local
-Overmind SDK (trajectory branch), including ``code.namespace`` / ``code.function.name`` anchors for
-trace binding and live scoring.
+When ``OVERMIND_API_KEY`` is set, the same decorators also emit spans to Overmind via the PyPI
+Overmind SDK, including structured span trees for agent runs, steps, tools, and LLM calls.
 
 Features:
 - Optional lmnr integration - works with or without lmnr installed
@@ -205,7 +204,7 @@ def observe_debug(
 
 	When Overmind is configured, interior spans listed in
 	:meth:`OvermindTelemetry.should_trace_debug_span` are traced regardless of
-	debug mode so the call graph carries ``code.namespace`` anchors.
+	debug mode so the call graph is complete in Overmind traces.
 
 	Debug mode is determined by:
 	- DEBUG environment variable set to 1/true/yes/on

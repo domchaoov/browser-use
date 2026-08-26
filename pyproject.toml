@@ -92,10 +92,6 @@ all = ["browser-use[cli,examples,aws,oci]"]
 # [tool.uv.sources]
 # bubus = { path = "../bubus", editable = true }
 
-[tool.uv.sources]
-overmind = { path = "/Users/dom/git/overmind/overmind", editable = true }
-
-
 [project.urls]
 Homepage = "https://browser-use.com"
 Documentation = "https://docs.browser-use.com"
